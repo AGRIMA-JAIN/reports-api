@@ -174,15 +174,23 @@ Score is returned in `metrics.completionScore` on every GET. Missing items are l
 
 ---
 ## Tradeoffs
-Persistence — I went with an in-memory store sitting behind a repository interface. The obvious downside is that data doesn't survive a restart, but the interface contract means swapping in Postgres later requires no changes to any route code — just a new adapter.
-Authentication — Stateless JWT made the most sense for horizontal scaling since there's no shared session store to worry about. The tradeoff is that you can't revoke a token mid-session without a Redis deny-list, but the 8-hour expiry keeps the risk window short.
-Concurrency — I used optimistic locking via the If-Match header rather than pessimistic row locks. Clients will occasionally hit a 412 and need to re-fetch, but that's far better than the throughput and deadlock problems that come with locking rows for the duration of a request.
-Job Queue — The in-process worker is the simplest approach that still demonstrates retry, back-off, and dead-letter behaviour. The real tradeoff is that jobs in-flight when the process crashes are lost. Since all the queue logic lives in jobQueue.ts, swapping to BullMQ is a one-file change.
-File Storage — Local disk works fine for a single instance but breaks down across multiple nodes. I abstracted it behind a StorageAdapter interface for exactly this reason — the S3 implementation would just be four methods.
-Pagination — Page/size offset pagination is simpler to implement and reason about. The known weakness is page drift when items are inserted between requests, but for report entries which rarely change mid-session, this is an acceptable tradeoff.
-Metrics — Computing completionScore, isOverdue, and trendIndicator at read time means they're always accurate, even if child data changes. The cost is recomputation on every GET, which a short-lived Redis cache would fix at scale without sacrificing correctness.
-File Upload — Running uploads through the server lets me validate type and size before anything hits storage. The downside is that all file bytes pass through the Node process, but at a 20 MB cap this is perfectly manageable.
-Download Tokens — Single-use, 1-hour tokens mean users can't bookmark download links, which is a minor inconvenience. The upside is that a leaked URL can only be used once, which matters for a system handling confidential reports.
+**Persistence** — I went with an in-memory store sitting behind a repository interface. The obvious downside is that data doesn't survive a restart, but the interface contract means swapping in Postgres later requires no changes to any route code — just a new adapter.
+
+**Authentication** — Stateless JWT made the most sense for horizontal scaling since there's no shared session store to worry about. The tradeoff is that you can't revoke a token mid-session without a Redis deny-list, but the 8-hour expiry keeps the risk window short.
+
+**Concurrency** — I used optimistic locking via the If-Match header rather than pessimistic row locks. Clients will occasionally hit a 412 and need to re-fetch, but that's far better than the throughput and deadlock problems that come with locking rows for the duration of a request.
+
+**Job Queue** — The in-process worker is the simplest approach that still demonstrates retry, back-off, and dead-letter behaviour. The real tradeoff is that jobs in-flight when the process crashes are lost. Since all the queue logic lives in jobQueue.ts, swapping to BullMQ is a one-file change.
+
+**File Storage** — Local disk works fine for a single instance but breaks down across multiple nodes. I abstracted it behind a StorageAdapter interface for exactly this reason — the S3 implementation would just be four methods.
+
+**Pagination** — Page/size offset pagination is simpler to implement and reason about. The known weakness is page drift when items are inserted between requests, but for report entries which rarely change mid-session, this is an acceptable tradeoff.
+
+**Metrics** — Computing completionScore, isOverdue, and trendIndicator at read time means they're always accurate, even if child data changes. The cost is recomputation on every GET, which a short-lived Redis cache would fix at scale without sacrificing correctness.
+
+**File Upload** — Running uploads through the server lets me validate type and size before anything hits storage. The downside is that all file bytes pass through the Node process, but at a 20 MB cap this is perfectly manageable.
+
+**Download Tokens** — Single-use, 1-hour tokens mean users can't bookmark download links, which is a minor inconvenience. The upside is that a leaked URL can only be used once, which matters for a system handling confidential reports.
 
 ## Custom Business Rule — Completion Score
 What It Is
