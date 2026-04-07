@@ -192,22 +192,6 @@ Score is returned in `metrics.completionScore` on every GET. Missing items are l
 
 **Download Tokens** — Single-use, 1-hour tokens mean users can't bookmark download links, which is a minor inconvenience. The upside is that a leaked URL can only be used once, which matters for a system handling confidential reports.
 
-## Custom Business Rule — Completion Score
-What It Is
-A Report cannot be promoted to published unless its Completion Score >= 70. The score (0–100) is computed at read time from content quality.
-Score Components
-CriterionPointsNon-empty title + summary+20≥1 finding entry+20≥1 recommendation entry+20All critical entries have body text+15≥1 reviewer assigned+10Due date set+10≥1 attachment+5
-API Behaviour
-
-GET → metrics.completionScore always visible
-POST → _hints lists exactly what is missing
-PUT status: published → 422 PUBLISH_GATE_FAILED if score < 70
-
-Implementation
-Single pure function in reportService.ts — no new DB fields, fully unit tested, weights adjustable in one place.
-Justification
-Without this gate, empty unreviewed drafts can accidentally reach published. A numeric score was chosen over a binary checklist because it shows partial progress, is easy to render as a progress bar, and the 70 threshold allows publication without demanding perfection (e.g. attachments are encouraged but not mandatory).
-
 ## Tests
 
 ```bash
