@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.js.map
+
+# Environment
+.env
+
+# Logs
+logs/
+
+# All uploaded files (test artifacts + real uploads)
+uploads/tmp/
+uploads/*
+!uploads/.gitkeep
+
+# OS
+.DS_Store
